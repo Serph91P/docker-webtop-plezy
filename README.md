@@ -1,0 +1,15 @@
+# docker-webtop-plezy
+
+Plezy running in a LinuxServer Selkies container for Sealskin.
+
+## Image
+
+```bash
+docker pull ghcr.io/serph91p/docker-webtop-plezy:latest
+```
+
+Stable store entries should use the generated release tag, for example `2.1.0-ls1`, not `latest`.
+
+## Store automation
+
+This repo sends a `repository_dispatch` event to `Serph91P/sealskin-store` after a successful image build when the `STORE_DISPATCH_TOKEN` secret is configured.

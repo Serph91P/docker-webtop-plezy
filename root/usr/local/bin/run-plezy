@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Plezy launcher for LinuxServer Selkies/Labwc.
+
+set -u
+
+export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}"
+export HOME="/config"
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+
+mkdir -p   "$HOME/Documents"   "$XDG_CONFIG_HOME"   "$XDG_DATA_HOME"   "$XDG_CACHE_HOME"
+
+cat > "$XDG_CONFIG_HOME/user-dirs.dirs" <<EOF
+XDG_DESKTOP_DIR="$HOME/Desktop"
+XDG_DOWNLOAD_DIR="$HOME/Downloads"
+XDG_TEMPLATES_DIR="$HOME/Templates"
+XDG_PUBLICSHARE_DIR="$HOME/Public"
+XDG_DOCUMENTS_DIR="$HOME/Documents"
+XDG_MUSIC_DIR="$HOME/Music"
+XDG_PICTURES_DIR="$HOME/Pictures"
+XDG_VIDEOS_DIR="$HOME/Videos"
+EOF
+
+if command -v xdg-user-dirs-update >/dev/null 2>&1; then
+  xdg-user-dirs-update || true
+fi
+
+candidates=(
+  /usr/bin/plezy
+  /opt/plezy/plezy
+)
+
+for candidate in "${candidates[@]}"; do
+  if [ -x "$candidate" ]; then
+    echo "[run-plezy] launching: $candidate $*"
+    exec "$candidate" "$@"
+  fi
+done
+
+echo "[run-plezy] ERROR: Plezy executable not found"
+echo "[run-plezy] PATH=$PATH"
+echo "[run-plezy] /usr/bin matches:"
+ls -la /usr/bin/plezy /usr/bin/plex* 2>/dev/null || true
+echo "[run-plezy] /opt matches:"
+ls -la /opt /opt/plezy /opt/plezy/* 2>/dev/null || true
+exit 127

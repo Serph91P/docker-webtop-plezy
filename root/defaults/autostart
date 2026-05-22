@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+# X11 fallback for hosts without AVX2/Wayland support.
+exec /usr/local/bin/run-plezy >> /tmp/plezy.log 2>&1
