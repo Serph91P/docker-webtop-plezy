@@ -102,10 +102,29 @@ jobs:
         if: ${{ github.event_name == 'push' || inputs.update_store }}
         env:
           GH_TOKEN: ${{ secrets.STORE_DISPATCH_TOKEN }}
+          STORE_IMAGE: ${{ steps.meta.outputs.image }}
+          STORE_TAG: ${{ steps.meta.outputs.release_tag }}
+          STORE_DIGEST: ${{ steps.build.outputs.digest }}
         shell: bash
         run: |
+          set -euo pipefail
           if [ -z "${GH_TOKEN}" ]; then
             echo "STORE_DISPATCH_TOKEN is not configured. Skipping store update."
             exit 0
           fi
-          gh api repos/${STORE_REPOSITORY}/dispatches             --method POST             --field event_type=update-app-image             --raw-field client_payload="{"app_id":"webtop-plezy","image":"${{ steps.meta.outputs.image }}","tag":"${{ steps.meta.outputs.release_tag }}","digest":"${{ steps.build.outputs.digest }}"}"
+          python3 - <<'PY' > /tmp/store-dispatch.json
+          import json
+          import os
+
+          payload = {
+              "event_type": "update-app-image",
+              "client_payload": {
+                  "app_id": "webtop-plezy",
+                  "image": os.environ["STORE_IMAGE"],
+                  "tag": os.environ["STORE_TAG"],
+                  "digest": os.environ["STORE_DIGEST"],
+              },
+          }
+          print(json.dumps(payload))
+          PY
+          gh api "repos/${STORE_REPOSITORY}/dispatches" --method POST --input /tmp/store-dispatch.json
