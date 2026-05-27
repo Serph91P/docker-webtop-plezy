@@ -1,0 +1,145 @@
+name: Update Plezy
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: update-plezy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  UPSTREAM_REPO: edde746/plezy
+  ASSET_NAME: plezy-linux-x64.pkg.tar.zst
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check latest Plezy release
+        id: plezy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_version=$(python3 - <<'PY'
+          import re
+          text = open('.github/workflows/release.yml', encoding='utf-8').read()
+          match = re.search(r'^  PLEZY_VERSION: (.+)$', text, re.MULTILINE)
+          if not match:
+              raise SystemExit('PLEZY_VERSION not found in release.yml')
+          print(match.group(1).strip().strip('"\''))
+          PY
+          )
+
+          gh api "repos/${UPSTREAM_REPO}/releases/latest" > /tmp/plezy-release.json
+
+          latest_version=$(python3 - <<'PY'
+          import json
+          release = json.load(open('/tmp/plezy-release.json', encoding='utf-8'))
+          print(release['tag_name'])
+          PY
+          )
+
+          asset_url=$(python3 - <<'PY'
+          import json, os
+          release = json.load(open('/tmp/plezy-release.json', encoding='utf-8'))
+          asset_name = os.environ['ASSET_NAME']
+          for asset in release.get('assets', []):
+              if asset.get('name') == asset_name:
+                  print(asset['browser_download_url'])
+                  break
+          else:
+              raise SystemExit(f'{asset_name} not found in latest release')
+          PY
+          )
+
+          echo "current_version=${current_version}" >> "$GITHUB_OUTPUT"
+          echo "latest_version=${latest_version}" >> "$GITHUB_OUTPUT"
+          echo "asset_url=${asset_url}" >> "$GITHUB_OUTPUT"
+
+          if [ "${current_version}" = "${latest_version}" ]; then
+            echo "update_needed=false" >> "$GITHUB_OUTPUT"
+            echo "Plezy is already up to date: ${current_version}"
+            exit 0
+          fi
+
+          curl -fsSL "${asset_url}" -o "/tmp/${ASSET_NAME}"
+          sha256=$(sha256sum "/tmp/${ASSET_NAME}" | awk '{print $1}')
+          echo "sha256=${sha256}" >> "$GITHUB_OUTPUT"
+          echo "update_needed=true" >> "$GITHUB_OUTPUT"
+          echo "Plezy update found: ${current_version} -> ${latest_version}"
+          echo "SHA256: ${sha256}"
+
+      - name: Update version files
+        if: steps.plezy.outputs.update_needed == 'true'
+        env:
+          LATEST_VERSION: ${{ steps.plezy.outputs.latest_version }}
+          PLEZY_SHA256: ${{ steps.plezy.outputs.sha256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ['LATEST_VERSION']
+          sha256 = os.environ['PLEZY_SHA256']
+
+          replacements = {
+              Path('.github/workflows/release.yml'): [
+                  (r'^  PLEZY_VERSION: .+$', f'  PLEZY_VERSION: {version}'),
+                  (r'^  PLEZY_SHA256: .+$', f'  PLEZY_SHA256: {sha256}'),
+              ],
+              Path('Dockerfile'): [
+                  (r'^ARG PLEZY_VERSION=.+$', f'ARG PLEZY_VERSION={version}'),
+                  (r'^ARG PLEZY_SHA256=.+$', f'ARG PLEZY_SHA256={sha256}'),
+              ],
+              Path('README.md'): [
+                  (r'`[0-9A-Za-z_.-]+-ls1`', f'`{version}-ls1`'),
+              ],
+          }
+
+          for path, rules in replacements.items():
+              text = path.read_text(encoding='utf-8')
+              for pattern, replacement in rules:
+                  text, count = re.subn(pattern, replacement, text, count=1, flags=re.MULTILINE)
+                  if count != 1:
+                      raise SystemExit(f'Pattern not found in {path}: {pattern}')
+              path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit update
+        if: steps.plezy.outputs.update_needed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/release.yml Dockerfile README.md
+          git commit -m "chore: update Plezy to ${{ steps.plezy.outputs.latest_version }}"
+          git push origin HEAD:main
+
+      - name: Start release workflow
+        if: steps.plezy.outputs.update_needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml --ref main -f update_store=true

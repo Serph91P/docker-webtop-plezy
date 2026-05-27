@@ -18,8 +18,8 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: docker-webtop-plezy
-  PLEZY_VERSION: 2.1.0
-  PLEZY_SHA256: ccc57d6a20dcb1e485449b6b1c7ae6f9650599b86f250293d9fbd60c1b5f491c
+  PLEZY_VERSION: 2.3.0
+  PLEZY_SHA256: b33c6ce7361e9cb40bc1c578c3e17f956c90af1917f446bb0755d7b5481965b7
   STORE_REPOSITORY: Serph91P/sealskin-store
 
 jobs:
