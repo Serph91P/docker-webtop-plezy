@@ -38,10 +38,10 @@ jobs:
 
           current_version=$(python3 - <<'PY'
           import re
-          text = open('.github/workflows/release.yml', encoding='utf-8').read()
-          match = re.search(r'^  PLEZY_VERSION: (.+)$', text, re.MULTILINE)
+          text = open('Dockerfile', encoding='utf-8').read()
+          match = re.search(r'^ARG PLEZY_VERSION=(.+)$', text, re.MULTILINE)
           if not match:
-              raise SystemExit('PLEZY_VERSION not found in release.yml')
+              raise SystemExit('PLEZY_VERSION not found in Dockerfile')
           print(match.group(1).strip().strip('"\''))
           PY
           )
@@ -102,10 +102,6 @@ jobs:
           sha256 = os.environ['PLEZY_SHA256']
 
           replacements = {
-              Path('.github/workflows/release.yml'): [
-                  (r'^  PLEZY_VERSION: .+$', f'  PLEZY_VERSION: {version}'),
-                  (r'^  PLEZY_SHA256: .+$', f'  PLEZY_SHA256: {sha256}'),
-              ],
               Path('Dockerfile'): [
                   (r'^ARG PLEZY_VERSION=.+$', f'ARG PLEZY_VERSION={version}'),
                   (r'^ARG PLEZY_SHA256=.+$', f'ARG PLEZY_SHA256={sha256}'),
@@ -131,7 +127,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/workflows/release.yml Dockerfile README.md
+          git add Dockerfile README.md
           git commit -m "chore: update Plezy to ${{ steps.plezy.outputs.latest_version }}"
           git push origin HEAD:main
 
