@@ -3,8 +3,8 @@ FROM ghcr.io/linuxserver/baseimage-selkies:arch
 ARG BUILD_DATE
 ARG VERSION
 ARG CACHE_BUST
-ARG PLEZY_VERSION=2.8.0
-ARG PLEZY_SHA256=ed5e7162a83bee96412c617ed5c8ea9f15822fb186aaba5c1f0ebef267d63609
+ARG PLEZY_VERSION=2.9.0
+ARG PLEZY_SHA256=81e91b09429e2c1c222eca11f1a4035fc3369da0f436a92c9eac27bf300d9484
 
 LABEL build_version="Custom Arch Plezy image - Build-date:- ${BUILD_DATE}"
 LABEL maintainer="Serph91P"
