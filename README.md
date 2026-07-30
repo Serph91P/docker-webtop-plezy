@@ -8,7 +8,7 @@ Plezy running in a LinuxServer Selkies container for Sealskin.
 docker pull ghcr.io/serph91p/docker-webtop-plezy:latest
 ```
 
-Stable store entries should use the generated release tag, for example `2.10.0-ls1`, not `latest`.
+Stable store entries should use the generated release tag, for example `2.11.0-ls1`, not `latest`.
 
 ## Store automation
 
